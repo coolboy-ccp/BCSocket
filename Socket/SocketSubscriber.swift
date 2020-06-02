@@ -17,16 +17,16 @@ public class SocketSubscriber<T: Decodable>: SocketSubscriberConvertible {
     private let message: SocketMessage
     private var messageHandler: ((T) -> ())?
     
-    init(_ message: SocketMessage) {
+    public init(_ message: SocketMessage) {
         self.message = message
     }
     
-    func subcribe(messageHandler: @escaping (T) -> ()) {
+    public func subcribe(messageHandler: @escaping (T) -> ()) {
         Socket.add(self, for: message)
         self.messageHandler = messageHandler
     }
     
-    func unscribe() {
+    public func unscribe() {
         Socket.unsubscribe(message)
     }
     
