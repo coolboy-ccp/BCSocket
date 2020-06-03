@@ -2,28 +2,63 @@
 WS for BC
 ## iOS 10.0 +, swift 5.0+
 * pod 'BCSocket'
+
+* 方式一
 ```
 import BCSocket
 
-//消息解析后的model
 struct ViewControllerModel: Decodable {
     
 }
 
 class ViewController: UIViewController {
-    //需要订阅的消息
-    private let ws = SocketSubscriber<ViewControllerModel>(.markets)
 
+    //新建订阅
+    private let subscriber = SocketPoolSubscriber<ViewControllerModel>(.markets)
+    
+    private let socket = SocketPool.connect("url1")
     override func viewDidLoad() {
         super.viewDidLoad()
-        //连接，全局只保持一个
-        Socket.connect("")
-        //开始订阅及订阅消息回调
-        ws.subcribe { (model) in
-
+        
+        //订阅消息并设置回调
+        subscriber.subcribe("url") { (socket, model) in
+            
         }
+        
+        //取消订阅
+        subscriber.unscribe("url")
+        
     }
+
 }
 
 ```
-##不需要做任何重连以及断开处理，取消订阅操作只在同一个observer订阅多个message时需要取消上一个订阅(不取消不影响使用，但会耗费流量)
+
+* 方式二
+```
+import BCSocket
+
+struct ViewControllerModel: Decodable {
+    
+}
+
+class ViewController: UIViewController {
+     //新建订阅
+    private let subscriber = SocketPoolSubscriber<ViewControllerModel>(.markets)
+     //新建连接
+    private let socket = SocketPool.connect("url1")
+    override func viewDidLoad() {
+        super.viewDidLoad()
+ 
+        //订阅消息并设置回调
+        subscriber.subcribe(socket) { (socket, model) in
+            
+        }
+        //取消订阅    
+        subscriber.unscribe(socket)
+    }
+
+}
+
+```
+

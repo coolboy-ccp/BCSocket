@@ -8,23 +8,46 @@
 
 import Starscream
 
-
-public extension Socket {
-    private static var ws: Socket?
+public class SocketPool {
+    private static var connectedSockets = [String : Socket]()
     
-    static func connect(_ url: String) {
-        if ws == nil {
-            ws = Socket(url)
+    public static func connect(_ url: String) -> Socket {
+        if let old = connectedSockets[url] {
+            return old
         }
-        ws?.connect()
+        let socket = Socket(url)
+        socket.connect()
+        connectedSockets[url] = socket
+        return socket
     }
     
-    static func add(_ subscriber: SocketSubscriberConvertible, for message: SocketMessage) {
-        ws?.add(subscriber, for: message)
+    static func add(_ subscriber: SocketSubscriberConvertible, for message: SocketMessage, for socket: Socket) {
+        socket.add(subscriber, for: message)
     }
     
-    static func unsubscribe(_ message: SocketMessage) {
-        ws?.unsubscribe(message)
+    public static func unsubscribe(_ message: SocketMessage, for socket: Socket) {
+        socket.unsubscribe(message)
+    }
+    
+    
+    /// Add a subscriber
+    /// - Parameters:
+    ///   - subscriber: Subscriber will be added
+    ///   - message: The message subscriber subscirbed
+    ///   - url: The url of a socket who will send the message.If the socket of the url is nil, create a new
+    static func add(_ subscriber: SocketSubscriberConvertible, for message: SocketMessage, for url: String) {
+        if let socket = connectedSockets[url] {
+            socket.add(subscriber, for: message)
+        }
+        else {
+            connect(url).add(subscriber, for: message)
+        }
+    }
+    
+    static func unsubscribe(_ message: SocketMessage, for url: String) {
+        if let socket = connectedSockets[url] {
+            socket.unsubscribe(message)
+        }
     }
 }
 
@@ -34,8 +57,10 @@ public class Socket {
     lazy private var observersMap = [SocketMessage : NSHashTable<AnyObject>]()
     private var subscribedMessages = [SocketMessage]()
     private var isConnected = false
+    public let url: String
     
-    init(_ url: String, timeout: TimeInterval = 10) {
+    init(_ url: String, timeout: TimeInterval = 5) {
+        self.url = url
         setWS(url, timeout)
     }
     
@@ -108,8 +133,8 @@ public class Socket {
             return
         }
         for observer in observers {
-            observer.refresh(message: message, response: response.data)
-        }        
+            observer.refresh(socket: self, message: message, response: response.data)
+        }
     }
     
     private func message(for stream: String) -> SocketMessage? {
